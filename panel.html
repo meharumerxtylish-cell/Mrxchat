@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MR X Chat — Owner Panel</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI', Roboto, Arial, sans-serif; background:#0b141a; color:#e9edef; min-height:100vh; }
+  header { background:#1f2c34; padding:16px 20px; }
+  header .t { font-size:22px; font-weight:800; } header .t span { color:#f0ad14; }
+  header .s { color:#aebac1; font-size:13px; margin-top:2px; }
+  .wrap { max-width:640px; margin:0 auto; padding:18px 16px 40px; }
+  .card { background:#1f2c34; border-radius:14px; padding:18px; margin-bottom:14px; }
+  .inp { width:100%; background:#0b141a; border:1px solid #2a3942; color:#fff; padding:13px 15px; border-radius:10px; font-size:16px; outline:none; }
+  .inp:focus { border-color:#f0ad14; }
+  .btn { background:linear-gradient(180deg,#ffd94d,#f0ad14); color:#231a00; border:none; font-weight:800; font-size:15px; padding:12px 26px; border-radius:24px; cursor:pointer; margin-top:12px; }
+  .row { display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid #2a3942; }
+  .row:last-child { border-bottom:none; }
+  .avatar { width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,#2a3942,#00a884); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:17px; flex-shrink:0; }
+  .avatar.gold { background:linear-gradient(135deg,#b97e0e,#ffd94d); color:#231a00; }
+  .nm { flex:1; font-size:16px; font-weight:600; min-width:0; }
+  .nm small { display:block; color:#8696a0; font-weight:400; font-size:12px; }
+  .badge { background:linear-gradient(180deg,#ffd94d,#f0ad14); color:#231a00; font-size:10px; font-weight:900; padding:2px 7px; border-radius:8px; margin-left:6px; }
+  .tog { border:none; padding:9px 16px; border-radius:18px; font-weight:700; cursor:pointer; font-size:13.5px; }
+  .tog.give { background:#00a884; color:#fff; }
+  .tog.take { background:#3b2f10; color:#ffd94d; border:1px solid #f0ad14; }
+  .stat { font-size:15px; color:#aebac1; } .stat b { color:#ffd94d; font-size:19px; }
+  #msg { margin-top:10px; font-size:14px; } .err { color:#ff6b6b; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="t">MR X <span>Chat</span> — Owner Panel</div>
+  <div class="s">Only for the owner. Give or remove PRO for any user.</div>
+</header>
+<div class="wrap">
+
+  <div class="card" id="pinCard">
+    <div style="font-weight:700; font-size:17px; margin-bottom:6px;" id="pinTitle">Enter your Owner PIN</div>
+    <div style="color:#aebac1; font-size:13.5px; margin-bottom:12px;" id="pinHint">This PIN protects your panel. Do not share it with anyone.</div>
+    <input class="inp" id="inpPin" type="password" inputmode="numeric" placeholder="PIN (numbers only)" maxlength="12">
+    <div id="msg"></div>
+    <button class="btn" id="btnPin">OPEN PANEL</button>
+  </div>
+
+  <div class="hidden" id="mainPanel">
+    <div class="card"><div class="stat">Total users: <b id="statUsers">0</b> &nbsp;•&nbsp; PRO users: <b id="statPro">0</b></div></div>
+    <div class="card">
+      <div style="font-weight:700; font-size:17px; margin-bottom:8px;">All Users</div>
+      <div id="userList"><div style="color:#8696a0;">Loading…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAYqGyOkZFZIIU7GeIBvchcCxVlSVieYbY",
+  authDomain: "mrxchat-9e6df.firebaseapp.com",
+  databaseURL: "https://mrxchat-9e6df-default-rtdb.firebaseio.com",
+  projectId: "mrxchat-9e6df",
+  storageBucket: "mrxchat-9e6df.firebasestorage.app",
+  messagingSenderId: "459711698326",
+  appId: "1:459711698326:web:1d40ffcec438a9e417b9b7"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+const $ = id => document.getElementById(id);
+function esc(t){ return String(t || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let pinIsSet = false;
+auth.onAuthStateChanged(async user => {
+  if (!user) { auth.signInAnonymously().catch(()=>{}); return; }
+  const s = await db.ref('config/adminPin').once('value');
+  pinIsSet = s.exists();
+  if (!pinIsSet) { $('pinTitle').textContent = 'Set your Owner PIN (first time)'; $('pinHint').textContent = 'Choose a PIN only you know. You will use it every time you open this panel.'; $('btnPin').textContent = 'SET PIN & OPEN'; }
+});
+
+$('btnPin').onclick = async () => {
+  const pin = $('inpPin').value.trim();
+  const msg = $('msg');
+  if (!/^\d{4,12}$/.test(pin)) { msg.className = 'err'; msg.textContent = 'PIN must be 4 to 12 numbers.'; return; }
+  if (!pinIsSet) {
+    await db.ref('config/adminPin').set(pin);
+    pinIsSet = true; openPanel(); return;
+  }
+  const s = await db.ref('config/adminPin').once('value');
+  if (s.val() === pin) openPanel();
+  else { msg.className = 'err'; msg.textContent = 'Wrong PIN. Try again.'; }
+};
+
+function openPanel(){
+  $('pinCard').classList.add('hidden');
+  $('mainPanel').classList.remove('hidden');
+  loadUsers();
+}
+
+function loadUsers(){
+  db.ref('users').on('value', snap => {
+    const users = snap.val() || {};
+    const entries = Object.entries(users).filter(([, u]) => u && u.username);
+    entries.sort((a, b) => (a[1].username || '').localeCompare(b[1].username || ''));
+    $('statUsers').textContent = entries.length;
+    $('statPro').textContent = entries.filter(([, u]) => u.pro).length;
+    if (!entries.length) { $('userList').innerHTML = '<div style="color:#8696a0;">No users yet. When someone joins the app, they will appear here.</div>'; return; }
+    $('userList').innerHTML = entries.map(([uid, u]) => {
+      const nm = u.username;
+      return '<div class="row"><div class="avatar' + (u.pro ? ' gold' : '') + '">' + esc(nm.charAt(0).toUpperCase()) + '</div>' +
+        '<div class="nm">@' + esc(nm) + (u.pro ? '<span class="badge">PRO</span>' : '') + '<small>' + (u.online ? 'Online now' : 'Offline') + '</small></div>' +
+        '<button class="tog ' + (u.pro ? 'take' : 'give') + '" data-uid="' + uid + '" data-pro="' + (u.pro ? '1' : '') + '">' + (u.pro ? 'Remove PRO' : 'Give PRO') + '</button></div>';
+    }).join('');
+    document.querySelectorAll('.tog').forEach(b => { b.onclick = async () => { await db.ref('users/' + b.dataset.uid + '/pro').set(!b.dataset.pro); }; });
+  });
+}
+</script>
+</body>
+</html>

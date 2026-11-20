@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MR X Chat</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:'Segoe UI', Roboto, Arial, sans-serif; background:#0b141a; color:#e9edef; height:100vh; overflow:hidden; }
+  .screen { position:fixed; inset:0; display:none; flex-direction:column; }
+  .screen.active { display:flex; }
+
+  /* INTRO */
+  #scrBlack { background:#000; z-index:50; align-items:center; justify-content:center; }
+  #scrIntro { background:#000; z-index:49; align-items:center; justify-content:center; text-align:center; padding:30px; }
+  .logoText { font-size:64px; font-weight:900; letter-spacing:2px; background:linear-gradient(180deg,#ffe97a,#f5b921 55%,#b97e0e); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 0 34px rgba(245,185,33,.25); }
+  .tagline { color:#cfd3d6; letter-spacing:6px; font-size:13px; margin-top:6px; }
+  .introAbout { color:#aebac1; font-size:15px; line-height:1.65; max-width:420px; margin-top:26px; }
+  .btnGold { background:linear-gradient(180deg,#ffd94d,#f0ad14); color:#231a00; border:none; font-weight:800; font-size:17px; padding:14px 42px; border-radius:30px; margin-top:34px; cursor:pointer; box-shadow:0 6px 22px rgba(240,173,20,.35); }
+  .btnGold:active { transform:scale(.97); }
+
+  /* SETUP */
+  #scrSetup { background:#111b21; align-items:center; justify-content:center; padding:28px; text-align:center; }
+  #scrSetup h1 { font-size:30px; margin-bottom:8px; }
+  #scrSetup p { color:#aebac1; font-size:14.5px; line-height:1.6; max-width:380px; }
+  .inp { width:100%; max-width:340px; background:#1f2c34; border:1px solid #2a3942; color:#fff; padding:14px 16px; border-radius:12px; font-size:17px; margin-top:22px; outline:none; }
+  .inp:focus { border-color:#f0ad14; }
+  #setupMsg { margin-top:14px; font-size:14px; min-height:20px; }
+  .err { color:#ff6b6b; } .ok { color:#25d366; }
+
+  /* MAIN */
+  header { background:#1f2c34; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 1px 6px rgba(0,0,0,.4); }
+  header .brand { font-size:21px; font-weight:800; }
+  header .brand span { color:#f0ad14; }
+  header .me { font-size:13px; color:#aebac1; text-align:right; }
+  header .me b { color:#ffd94d; font-size:14px; }
+  .proBadge { background:linear-gradient(180deg,#ffd94d,#f0ad14); color:#231a00; font-size:10px; font-weight:900; padding:2px 7px; border-radius:8px; margin-left:5px; vertical-align:2px; }
+  .tabs { display:flex; background:#1f2c34; }
+  .tabs button { flex:1; background:none; border:none; color:#aebac1; font-size:15px; font-weight:600; padding:12px; cursor:pointer; border-bottom:3px solid transparent; }
+  .tabs button.on { color:#ffd94d; border-bottom-color:#f0ad14; }
+  .page { flex:1; overflow-y:auto; display:none; }
+  .page.on { display:block; }
+  .searchBar { padding:10px 12px; display:flex; gap:8px; background:#111b21; position:sticky; top:0; z-index:2; }
+  .searchBar input { flex:1; background:#1f2c34; border:none; color:#fff; padding:11px 14px; border-radius:20px; font-size:15px; outline:none; }
+  .searchBar button { background:#00a884; color:#fff; border:none; padding:0 18px; border-radius:20px; font-weight:700; cursor:pointer; }
+  .row { display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; border-bottom:1px solid #1c282f; }
+  .row:active { background:#1f2c34; }
+  .avatar { width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg,#2a3942,#00a884); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#fff; flex-shrink:0; position:relative; }
+  .avatar.gold { background:linear-gradient(135deg,#b97e0e,#ffd94d); color:#231a00; }
+  .dot { position:absolute; right:1px; bottom:1px; width:12px; height:12px; border-radius:50%; background:#25d366; border:2px solid #0b141a; display:none; }
+  .dot.on { display:block; }
+  .rowMain { flex:1; min-width:0; }
+  .rowTop { display:flex; justify-content:space-between; align-items:baseline; }
+  .rowName { font-size:16.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rowName .goldName { color:#ffd94d; }
+  .rowTime { font-size:11.5px; color:#8696a0; flex-shrink:0; margin-left:8px; }
+  .rowSub { font-size:13.5px; color:#8696a0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+  .emptyNote { text-align:center; color:#8696a0; padding:36px 30px; font-size:14.5px; line-height:1.7; }
+  .statusBox { margin:14px 16px; background:#1f2c34; border-radius:14px; padding:14px; }
+  .statusBox textarea { width:100%; background:#0b141a; border:1px solid #2a3942; border-radius:10px; color:#fff; padding:10px; font-size:15px; resize:none; outline:none; font-family:inherit; }
+  .statusBox button { margin-top:10px; background:#00a884; color:#fff; border:none; padding:10px 22px; border-radius:20px; font-weight:700; cursor:pointer; }
+
+  /* CHAT */
+  #scrChat { background:#0b141a; }
+  .chatHead { background:#1f2c34; padding:9px 12px; display:flex; align-items:center; gap:10px; }
+  .iconBtn { background:none; border:none; color:#e9edef; font-size:21px; cursor:pointer; padding:6px; }
+  .chatHead .avatar { width:40px; height:40px; font-size:17px; }
+  .chatHead .who { flex:1; min-width:0; }
+  .chatHead .who .n { font-size:16.5px; font-weight:600; }
+  .chatHead .who .s { font-size:12.5px; color:#8696a0; }
+  #msgList { flex:1; overflow-y:auto; padding:14px 12px; background-image:radial-gradient(#182229 1px, transparent 1px); background-size:22px 22px; }
+  .msg { max-width:78%; padding:8px 11px 6px; border-radius:10px; margin-bottom:7px; font-size:15px; line-height:1.45; word-wrap:break-word; position:relative; }
+  .msg.me { background:#005c4b; margin-left:auto; border-top-right-radius:2px; }
+  .msg.them { background:#1f2c34; margin-right:auto; border-top-left-radius:2px; }
+  .msg .mt { font-size:10.5px; color:#aebac1; text-align:right; margin-top:3px; }
+  .msg .tick { color:#53bdeb; }
+  .composer { display:flex; gap:8px; padding:9px 10px; align-items:flex-end; background:#0b141a; }
+  .composer .box { flex:1; background:#1f2c34; border-radius:24px; display:flex; align-items:flex-end; padding:4px 6px 4px 14px; }
+  .composer textarea { flex:1; background:none; border:none; color:#fff; font-size:15.5px; resize:none; outline:none; max-height:90px; font-family:inherit; padding:7px 0; }
+  .emojiBtn { background:none; border:none; font-size:22px; cursor:pointer; padding:4px; }
+  .sendBtn { width:48px; height:48px; border-radius:50%; background:#00a884; border:none; color:#fff; font-size:20px; cursor:pointer; flex-shrink:0; }
+  #emojiRow { display:none; padding:8px 12px; font-size:25px; background:#111b21; flex-wrap:wrap; gap:2px; }
+  #emojiRow span { cursor:pointer; padding:3px; }
+  #emojiRow.open { display:flex; }
+
+  /* CALL */
+  #scrCall { background:linear-gradient(180deg,#0b141a,#12262e); z-index:40; align-items:center; text-align:center; padding:40px 24px; }
+  #scrCall .avatar { width:110px; height:110px; font-size:46px; margin-top:26px; }
+  #callName { font-size:26px; font-weight:700; margin-top:20px; }
+  #callState { color:#aebac1; font-size:15px; margin-top:6px; }
+  #remoteVideo { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; }
+  #localVideo { position:absolute; right:14px; top:14px; width:104px; height:150px; object-fit:cover; border-radius:12px; display:none; border:2px solid #2a3942; z-index:2; }
+  .callBtns { position:absolute; bottom:44px; left:0; right:0; display:flex; justify-content:center; gap:20px; z-index:3; }
+  .cbtn { width:62px; height:62px; border-radius:50%; border:none; font-size:25px; cursor:pointer; color:#fff; background:#2a3942; }
+  .cbtn.end { background:#ea0038; }
+  .cbtn.accept { background:#00a884; }
+  .cbtn.off { background:#e9edef; color:#111; }
+</style>
+</head>
+<body>
+
+<!-- INTRO: black screen -->
+<div class="screen active" id="scrBlack"></div>
+
+<!-- INTRO: logo + about -->
+<div class="screen" id="scrIntro">
+  <div class="logoText">MR X</div>
+  <div class="tagline">PLAY BEYOND LIMITS</div>
+  <p class="introAbout">Welcome to <b>MR X Chat</b> — a fast, free chatting and calling app by MR X, created by Muhammad Umer in Sialkot, Pakistan. Pick your own unique name, find your friends, chat, call and share your moments — no phone number needed.</p>
+  <button class="btnGold" id="btnStart">GET STARTED</button>
+</div>
+
+<!-- SETUP: claim username -->
+<div class="screen" id="scrSetup">
+  <div class="logoText" style="font-size:44px;">MR X</div>
+  <h1 style="margin-top:16px;">Choose your name</h1>
+  <p>Every person gets <b>one unique name</b>. Your friends will find you by this name — no phone number needed.</p>
+  <input class="inp" id="inpName" placeholder="e.g. umer, ali123, mr.x" maxlength="15" autocomplete="off">
+  <div id="setupMsg"></div>
+  <button class="btnGold" id="btnClaim" style="margin-top:10px;">CLAIM MY NAME</button>
+</div>
+
+<!-- MAIN -->
+<div class="screen" id="scrMain">
+  <header>
+    <div class="brand">MR X <span>Chat</span></div>
+    <div class="me">You are<br><b id="myName"></b><span id="myPro"></span></div>
+  </header>
+  <div class="tabs">
+    <button id="tabChats" class="on">CHATS</button>
+    <button id="tabStatus">STATUS</button>
+  </div>
+  <div class="page on" id="pageChats">
+    <div class="searchBar">
+      <input id="inpSearch" placeholder="Search a name to add…" maxlength="15">
+      <button id="btnSearch">ADD</button>
+    </div>
+    <div id="chatList"></div>
+  </div>
+  <div class="page" id="pageStatus">
+    <div class="statusBox">
+      <div style="font-weight:700; margin-bottom:8px;">My Status</div>
+      <textarea id="inpStatus" rows="2" maxlength="120" placeholder="What is on your mind today?"></textarea>
+      <button id="btnStatus">POST STATUS</button>
+    </div>
+    <div id="statusList"></div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="screen" id="scrChat">
+  <div class="chatHead">
+    <button class="iconBtn" id="btnBack">←</button>
+    <div class="avatar" id="chatAvatar">?</div>
+    <div class="who"><div class="n" id="chatName"></div><div class="s" id="chatPresence"></div></div>
+    <button class="iconBtn" id="btnVoice" title="Voice call">📞</button>
+    <button class="iconBtn" id="btnVideo" title="Video call">📹</button>
+  </div>
+  <div id="msgList"></div>
+  <div id="emojiRow"></div>
+  <div class="composer">
+    <div class="box">
+      <button class="emojiBtn" id="btnEmoji">😊</button>
+      <textarea id="inpMsg" rows="1" placeholder="Message"></textarea>
+    </div>
+    <button class="sendBtn" id="btnSend">➤</button>
+  </div>
+</div>
+
+<!-- CALL -->
+<div class="screen" id="scrCall">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+  <div class="avatar" id="callAvatar">?</div>
+  <div id="callName"></div>
+  <div id="callState">Calling…</div>
+  <div class="callBtns">
+    <button class="cbtn" id="btnMute" title="Mute">🎤</button>
+    <button class="cbtn accept" id="btnAccept" title="Accept" style="display:none;">📞</button>
+    <button class="cbtn end" id="btnEnd" title="End call">📞</button>
+    <button class="cbtn" id="btnCam" title="Camera on/off">📷</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAYqGyOkZFZIIU7GeIBvchcCxVlSVieYbY",
+  authDomain: "mrxchat-9e6df.firebaseapp.com",
+  databaseURL: "https://mrxchat-9e6df-default-rtdb.firebaseio.com",
+  projectId: "mrxchat-9e6df",
+  storageBucket: "mrxchat-9e6df.firebasestorage.app",
+  messagingSenderId: "459711698326",
+  appId: "1:459711698326:web:1d40ffcec438a9e417b9b7"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
+
+const $ = id => document.getElementById(id);
+const screens = ['scrBlack','scrIntro','scrSetup','scrMain','scrChat','scrCall'];
+function show(id){ screens.forEach(s => $(s).classList.toggle('active', s === id)); }
+function esc(t){ return t.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTime(ts){ const d = new Date(ts); let h = d.getHours(), m = ('0'+d.getMinutes()).slice(-2), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + m + ' ' + ap; }
+function chatIdFor(a, b){ return [a, b].sort().join('_'); }
+
+let me = null;            // {uid, username, pro}
+let curChat = null;       // {uid, username}
+let msgRef = null, presRef = null;
+const userCache = {};
+
+function getUser(uid){
+  if (userCache[uid]) return Promise.resolve(userCache[uid]);
+  return db.ref('users/' + uid).once('value').then(s => { userCache[uid] = s.val() || {}; return userCache[uid]; });
+}
+
+/* ---------- INTRO ---------- */
+setTimeout(() => { show('scrIntro'); }, 3000);
+$('btnStart').onclick = () => { startApp(); };
+
+/* ---------- AUTH + SETUP ---------- */
+let appStarted = false;
+function startApp(){
+  if (appStarted) return; appStarted = true;
+  auth.onAuthStateChanged(async user => {
+    if (!user) { auth.signInAnonymously().catch(e => alert('Connection error: ' + e.message)); return; }
+    const snap = await db.ref('users/' + user.uid).once('value');
+    if (snap.exists() && snap.val().username) {
+      me = { uid: user.uid, username: snap.val().username, pro: !!snap.val().pro };
+      enterMain();
+    } else {
+      show('scrSetup');
+    }
+  });
+}
+
+$('btnClaim').onclick = async () => {
+  const raw = $('inpName').value.trim().toLowerCase();
+  const name = raw.replace(/[^a-z0-9._]/g, '');
+  const msg = $('setupMsg');
+  if (name.length < 3) { msg.className = 'err'; msg.textContent = 'Name must be at least 3 characters (letters, numbers, . or _)'; return; }
+  if (name !== raw) { msg.className = 'err'; msg.textContent = 'Only small letters, numbers, . and _ are allowed.'; return; }
+  msg.className = ''; msg.textContent = 'Checking…';
+  const user = auth.currentUser; if (!user) return;
+  const nameRef = db.ref('usernames/' + name);
+  const res = await nameRef.transaction(cur => { if (cur === null) return user.uid; return; });
+  if (!res.committed) { msg.className = 'err'; msg.textContent = 'Sorry — the name "' + name + '" is already taken. Try another.'; return; }
+  await db.ref('users/' + user.uid).set({ username: name, pro: false, created: Date.now(), online: true, statusText: '', statusTs: 0 });
+  me = { uid: user.uid, username: name, pro: false };
+  msg.className = 'ok'; msg.textContent = 'Name claimed! Welcome, ' + name;
+  setTimeout(enterMain, 500);
+};
+
+/* ---------- MAIN ---------- */
+function enterMain(){
+  show('scrMain');
+  $('myName').textContent = '@' + me.username;
+  $('myPro').innerHTML = me.pro ? '<span class="proBadge">PRO</span>' : '';
+  const pres = db.ref('users/' + me.uid);
+  pres.update({ online: true });
+  pres.child('online').onDisconnect().set(false);
+  pres.child('lastSeen').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+  db.ref('users/' + me.uid + '/pro').on('value', s => { me.pro = !!s.val(); $('myPro').innerHTML = me.pro ? '<span class="proBadge">PRO</span>' : ''; renderChats(); });
+  loadChats(); loadStatuses(); listenIncoming();
+}
+
+$('tabChats').onclick = () => { $('tabChats').classList.add('on'); $('tabStatus').classList.remove('on'); $('pageChats').classList.add('on'); $('pageStatus').classList.remove('on'); };
+$('tabStatus').onclick = () => { $('tabStatus').classList.add('on'); $('tabChats').classList.remove('on'); $('pageStatus').classList.add('on'); $('pageChats').classList.remove('on'); };
+
+$('btnSearch').onclick = async () => {
+  const q = $('inpSearch').value.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
+  if (q.length < 3) { alert('Type a full name (at least 3 characters).'); return; }
+  if (q === me.username) { alert('That is your own name.'); return; }
+  const s = await db.ref('usernames/' + q).once('value');
+  if (!s.exists()) { alert('No user found with the name "' + q + '". Check the spelling.'); return; }
+  const theirUid = s.val();
+  await db.ref('contacts/' + me.uid + '/' + theirUid).set(true);
+  $('inpSearch').value = '';
+  openChat(theirUid, q);
+};
+
+let chatsMeta = {};
+function loadChats(){
+  db.ref('contacts/' + me.uid).on('value', () => renderChats());
+  db.ref('userChats/' + me.uid).on('value', snap => { chatsMeta = snap.val() || {}; renderChats(); });
+}
+async function renderChats(){
+  if (!me) return;
+  const snap = await db.ref('contacts/' + me.uid).once('value');
+  const contacts = snap.val() || {};
+    const ids = Object.keys(contacts);
+    if (!ids.length) { $('chatList').innerHTML = '<div class="emptyNote">No chats yet.<br>Search a friend\'s name above and tap ADD to start your first chat.</div>'; return; }
+    const rows = [];
+    for (const uid of ids) {
+      const u = await getUser(uid);
+      const meta = chatsMeta[chatIdFor(me.uid, uid)] || {};
+      rows.push({ uid, u, meta });
+    }
+    rows.sort((a, b) => (b.meta.lastTs || 0) - (a.meta.lastTs || 0));
+    $('chatList').innerHTML = rows.map(r => {
+      const nm = r.u.username || '?';
+      const first = nm.charAt(0).toUpperCase();
+      const sub = r.meta.lastMsg ? esc(r.meta.lastMsg) : (r.u.online ? 'Online' : 'Tap to chat');
+      return '<div class="row" data-uid="' + r.uid + '" data-name="' + esc(nm) + '">' +
+        '<div class="avatar' + (r.u.pro ? ' gold' : '') + '">' + first + '<div class="dot' + (r.u.online ? ' on' : '') + '"></div></div>' +
+        '<div class="rowMain"><div class="rowTop"><div class="rowName">' + (r.u.pro ? '<span class="goldName">@' + esc(nm) + '</span>' : '@' + esc(nm)) + (r.u.pro ? '<span class="proBadge">PRO</span>' : '') + '</div>' +
+        '<div class="rowTime">' + (r.meta.lastTs ? fmtTime(r.meta.lastTs) : '') + '</div></div>' +
+        '<div class="rowSub">' + sub + '</div></div></div>';
+    }).join('');
+    document.querySelectorAll('#chatList .row').forEach(el => { el.onclick = () => openChat(el.dataset.uid, el.dataset.name); });
+}
+
+/* ---------- STATUS ---------- */
+$('btnStatus').onclick = async () => {
+  const t = $('inpStatus').value.trim(); if (!t) return;
+  await db.ref('users/' + me.uid).update({ statusText: t, statusTs: Date.now() });
+  $('inpStatus').value = ''; alert('Status posted!');
+};
+function loadStatuses(){
+  db.ref('contacts/' + me.uid).on('value', async snap => {
+    const ids = Object.keys(snap.val() || {});
+    const dayAgo = Date.now() - 24 * 3600 * 1000;
+    let html = '';
+    const mine = await getUser(me.uid);
+    if (mine.statusText && mine.statusTs > dayAgo) html += statusRow(me.username, mine, true);
+    for (const uid of ids) { const u = await getUser(uid); if (u.statusText && u.statusTs > dayAgo) html += statusRow(u.username, u, false); }
+    $('statusList').innerHTML = html || '<div class="emptyNote">No statuses yet.<br>Post yours above — it stays for 24 hours.</div>';
+  });
+}
+function statusRow(name, u, isMe){
+  return '<div class="row" style="cursor:default;"><div class="avatar' + (u.pro ? ' gold' : '') + '">' + esc((name || '?').charAt(0).toUpperCase()) + '</div>' +
+    '<div class="rowMain"><div class="rowName">' + (isMe ? 'Your status' : '@' + esc(name)) + '</div><div class="rowSub" style="white-space:normal;">' + esc(u.statusText) + '</div></div>' +
+    '<div class="rowTime">' + fmtTime(u.statusTs) + '</div></div>';
+}
+
+/* ---------- CHAT SCREEN ---------- */
+const EMOJIS = ['😀','😂','😍','👍','🙏','😊','🔥','❤️','😎','🤣','😅','👌','🎉','💯','😢','😡','🤔','👏','🌹','⭐'];
+$('emojiRow').innerHTML = EMOJIS.map(e => '<span>' + e + '</span>').join('');
+document.querySelectorAll('#emojiRow span').forEach(s => { s.onclick = () => { $('inpMsg').value += s.textContent; $('inpMsg').focus(); }; });
+$('btnEmoji').onclick = () => $('emojiRow').classList.toggle('open');
+
+function openChat(theirUid, theirName){
+  curChat = { uid: theirUid, username: theirName };
+  show('scrChat');
+  $('chatName').textContent = '@' + theirName;
+  $('chatAvatar').textContent = theirName.charAt(0).toUpperCase();
+  $('msgList').innerHTML = '';
+  if (presRef) presRef.off();
+  presRef = db.ref('users/' + theirUid);
+  presRef.on('value', s => {
+    const u = s.val() || {}; userCache[theirUid] = u;
+    $('chatAvatar').className = 'avatar' + (u.pro ? ' gold' : '');
+    $('chatPresence').textContent = u.online ? 'Online' : (u.lastSeen ? 'Last seen ' + fmtTime(u.lastSeen) : 'Offline');
+  });
+  const cid = chatIdFor(me.uid, theirUid);
+  if (msgRef) msgRef.off();
+  msgRef = db.ref('chats/' + cid + '/messages').limitToLast(100);
+  msgRef.on('child_added', snap => { addMsgBubble(snap.val()); markRead(cid); });
+}
+function addMsgBubble(m){
+  const div = document.createElement('div');
+  div.className = 'msg ' + (m.from === me.uid ? 'me' : 'them');
+  const tick = m.from === me.uid ? ' <span class="tick">' + (m.read ? '✓✓' : '✓') + '</span>' : '';
+  div.innerHTML = esc(m.text) + '<div class="mt">' + fmtTime(m.ts) + tick + '</div>';
+  $('msgList').appendChild(div);
+  $('msgList').scrollTop = $('msgList').scrollHeight;
+}
+function markRead(cid){
+  db.ref('chats/' + cid + '/messages').orderByChild('from').equalTo(curChat.uid).once('value', snap => {
+    snap.forEach(c => { if (!c.val().read) c.ref.update({ read: true }); });
+  });
+}
+$('btnBack').onclick = () => { if (msgRef) msgRef.off(); if (presRef) presRef.off(); curChat = null; show('scrMain'); };
+
+$('btnSend').onclick = sendMsg;
+$('inpMsg').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
+async function sendMsg(){
+  const text = $('inpMsg').value.trim(); if (!text || !curChat) return;
+  $('inpMsg').value = '';
+  const cid = chatIdFor(me.uid, curChat.uid);
+  const now = Date.now();
+  await db.ref('chats/' + cid + '/messages').push({ from: me.uid, text, ts: now, read: false });
+  const meta = { with: curChat.uid, lastMsg: text, lastTs: now };
+  await db.ref('userChats/' + me.uid + '/' + cid).set(meta);
+  await db.ref('userChats/' + curChat.uid + '/' + cid).set({ with: me.uid, lastMsg: text, lastTs: now });
+  await db.ref('contacts/' + curChat.uid + '/' + me.uid).set(true);
+}
+
+/* ---------- CALLS (WebRTC) ---------- */
+const ICE = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' } ] };
+let pc = null, localStream = null, curCall = null, ringTimer = null, callTimer = null, callSecs = 0;
+
+function beep(freq, dur){ try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = freq; o.connect(g); g.connect(ctx.destination); g.gain.value = 0.08; o.start(); setTimeout(() => { o.stop(); ctx.close(); }, dur); } catch(e){} }
+function startRing(){ beep(440, 400); ringTimer = setInterval(() => beep(440, 400), 2000); }
+function stopRing(){ if (ringTimer) clearInterval(ringTimer); ringTimer = null; }
+
+$('btnVoice').onclick = () => startCall('voice');
+$('btnVideo').onclick = () => startCall('video');
+
+async function startCall(type){
+  if (!curChat) return;
+  const cid = chatIdFor(me.uid, curChat.uid);
+  curCall = { id: cid, with: curChat.uid, withName: curChat.username, type, amCaller: true };
+  showCallUI('Calling…', false);
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
+  } catch(e){ alert('Microphone/Camera permission is needed for calls.'); cleanupCall(); return; }
+  setupPC();
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  if (type === 'video') { $('localVideo').srcObject = localStream; $('localVideo').style.display = 'block'; }
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  const ref = db.ref('calls/' + cid);
+  await ref.set({ caller: me.uid, callee: curChat.uid, type, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, ts: Date.now() });
+  await db.ref('userCalls/' + curChat.uid).set(cid);
+  startRing();
+  ref.child('status').on('value', async s => {
+    const st = s.val();
+    if (st === 'active') { stopRing(); $('callState').textContent = 'Connected'; startCallTimer(); }
+    if (st === 'ended') { endCallUI(); }
+  });
+  ref.child('answer').on('value', async s => {
+    const a = s.val(); if (a && pc && !pc.currentRemoteDescription) { await pc.setRemoteDescription(new RTCSessionDescription(a)); }
+  });
+  listenCands(cid, 'callee');
+}
+
+function setupPC(){
+  pc = new RTCPeerConnection(ICE);
+  pc.ontrack = e => {
+    $('remoteVideo').srcObject = e.streams[0];
+    if (curCall && curCall.type === 'video') $('remoteVideo').style.display = 'block';
+  };
+  pc.onicecandidate = e => {
+    if (e.candidate && curCall) {
+      const side = curCall.amCaller ? 'caller' : 'callee';
+      db.ref('calls/' + curCall.id + '/cands/' + side).push(e.candidate.toJSON());
+    }
+  };
+}
+function listenCands(cid, otherSide){
+  db.ref('calls/' + cid + '/cands/' + otherSide).on('child_added', async snap => {
+    try { if (pc) await pc.addIceCandidate(new RTCIceCandidate(snap.val())); } catch(e){}
+  });
+}
+
+function listenIncoming(){
+  db.ref('userCalls/' + me.uid).on('value', async snap => {
+    const cid = snap.val(); if (!cid || curCall) return;
+    const c = (await db.ref('calls/' + cid).once('value')).val();
+    if (!c || c.status !== 'ringing' || c.callee !== me.uid) return;
+    const callerUser = await getUser(c.caller);
+    curCall = { id: cid, with: c.caller, withName: callerUser.username || '?', type: c.type, amCaller: false, offer: c.offer };
+    showCallUI('Incoming ' + c.type + ' call…', true);
+    startRing();
+    db.ref('calls/' + cid + '/status').on('value', s => { if (s.val() === 'ended') endCallUI(); });
+  });
+}
+
+function showCallUI(state, incoming){
+  show('scrCall');
+  $('callName').textContent = '@' + (curCall ? curCall.withName : '');
+  $('callAvatar').textContent = (curCall ? curCall.withName.charAt(0).toUpperCase() : '?');
+  $('callState').textContent = state;
+  $('btnAccept').style.display = incoming ? 'block' : 'none';
+  $('remoteVideo').style.display = 'none'; $('localVideo').style.display = 'none';
+}
+
+$('btnAccept').onclick = async () => {
+  stopRing();
+  const cid = curCall.id;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: curCall.type === 'video' });
+  } catch(e){ alert('Microphone/Camera permission is needed.'); return; }
+  setupPC();
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  if (curCall.type === 'video') { $('localVideo').srcObject = localStream; $('localVideo').style.display = 'block'; }
+  await pc.setRemoteDescription(new RTCSessionDescription(curCall.offer));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await db.ref('calls/' + cid + '/answer').set({ type: answer.type, sdp: answer.sdp });
+  await db.ref('calls/' + cid + '/status').set('active');
+  $('btnAccept').style.display = 'none';
+  $('callState').textContent = 'Connected';
+  startCallTimer();
+  listenCands(cid, 'caller');
+};
+
+$('btnEnd').onclick = async () => {
+  if (curCall) { await db.ref('calls/' + curCall.id + '/status').set('ended'); await db.ref('userCalls/' + curCall.with).remove(); await db.ref('userCalls/' + me.uid).remove(); }
+  endCallUI();
+};
+$('btnMute').onclick = () => {
+  if (!localStream) return;
+  const t = localStream.getAudioTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled; $('btnMute').classList.toggle('off', !t.enabled);
+  $('btnMute').textContent = t.enabled ? '🎤' : '🔇';
+};
+$('btnCam').onclick = () => {
+  if (!localStream) return;
+  const t = localStream.getVideoTracks()[0]; if (!t) return;
+  t.enabled = !t.enabled; $('btnCam').classList.toggle('off', !t.enabled);
+};
+
+function startCallTimer(){ callSecs = 0; if (callTimer) clearInterval(callTimer); callTimer = setInterval(() => { callSecs++; const m = Math.floor(callSecs / 60), s = ('0' + (callSecs % 60)).slice(-2); $('callState').textContent = 'Connected • ' + m + ':' + s; }, 1000); }
+function cleanupCall(){
+  stopRing(); if (callTimer) clearInterval(callTimer); callTimer = null;
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (pc) { try { pc.close(); } catch(e){} pc = null; }
+  curCall = null;
+}
+function endCallUI(){ cleanupCall(); show(curChat ? 'scrChat' : 'scrMain'); }
+</script>
+</body>
+</html>
